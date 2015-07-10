@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>Flux your React muscle</title>
+
+    <meta name="description" content="Flux and React">
+    <meta name="author" content="Adrian Gheorghe">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/simple.css" id="theme">
+
+    <!-- Code syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <style type="text/css">
+      .reveal h1 {
+        font-size: 2.9em;
+      }
+      .reveal pre {
+        box-shadow: none;
+      }
+      .reveal pre code {
+        padding: 20px;
+        font: normal 16pt "Courier New";
+      }
+      .reveal section img.clean {
+        box-shadow: none;
+        border: 0;
+      }
+      .faded {
+        opacity: .3;
+      }
+    </style>
+
+    <!-- Printing and PDF exports -->
+    <script>
+      var link = document.createElement( 'link' );
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+      document.getElementsByTagName( 'head' )[0].appendChild( link );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+  </head>
+
+  <body>
+
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h1>Flux your React muscle</h1>
+          <h3>Data flows in React applications</h3>
+        </section>
+
+        <section>
+          <h2>React</h2>
+          <p class="fragment"><q cite="http://facebook.github.io/react/">A JAVASCRIPT LIBRARY FOR BUILDING USER INTERFACES</q></p>
+        </section>
+
+        <section>
+          <h3>Declarative</h3>
+          <ol>
+            <li>We write how we'd like the component to look like given some parameters.</h3>
+            <li>Then we change the data.</li>
+            <li>React will automatically re-render the components and update only what changed.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2>MVC</h2>
+        </section>
+
+        <section>
+          <h2>Flux</h2>
+          <p class="fragment"><q cite="https://facebook.github.io/flux/">APPLICATION ARCHITECTURE FOR BUILDING USER INTERFACES</q></p>
+        </section>
+
+        <section>
+          <img src="./flux_logo.svg" class="clean" width="200"/>
+        </section>
+
+        <section>
+          <img src="./flux_simple.png" class="clean"/>
+        </section>
+
+        <section>
+          <h2>Unidirectional data flow</h2>
+          <ul>
+            <li>inverted control: stores receive events and do the right thing</li>
+            <li>stores are read-only to the application: input happens <strong>only</strong> through action events</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>What about async?</h2>
+        </section>
+
+        <section>
+          <img src="./flux_full.png" class="clean"/>
+        </section>
+
+        <section>
+          <h2>Dispatcher</h2>
+          <p><em>dispatch(), register(), waitFor()</em></p>
+        </section>
+
+        <section>
+          <h2>Not Pub-Sub</h2>
+          <ul>
+            <li>every payload is dispatched to every registered callback (ie. every store)</li>
+            <li>waitFor allows waiting for other stores to process the action</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+const dispatcher = new Dispatcher();
+
+CountryStore.dispatchToken = dispatcher.register(action => {
+  if (action.actionType === 'country-update') {
+    CountryStore.country = action.country;
+  }
+});
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+CityStore.dispatchToken = dispatcher.register(action => {
+  if (payload.actionType === 'country-update') {
+    // `CountryStore.country` may not be updated.
+    dispatcher.waitFor([CountryStore.dispatchToken]);
+    // `CountryStore.country` is now guaranteed to be updated.
+
+    // Select the default city for the new country
+    CityStore.city = getDefaultCityForCountry(
+      CountryStore.country
+    );
+  }
+});
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>waitFor?</h2>
+          <ul>
+            <li>generally a smell</li>
+            <li>maybe there shouldn't be 2 stores?</li>
+            <li>or create a third store</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+CityStore.dispatchToken = dispatcher.register(payload => {
+  if (payload.actionType === 'country-update') {
+    // we reset the city when the country is changed
+    CityStore.city = null;
+  }
+});
+
+LocationStore.getCountry = function() {
+  return CountryStore.country;
+};
+
+LocationStore.getCity = function() {
+  return CityStore.city ||
+    getDefaultCityForCountry(CountryStore.country);
+};
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Action Creators</h2>
+          <ul>
+            <li>helper methods for the dispatcher</li>
+            <li>semantic API (public interface of the application)</li>
+            <li>mapping between some mechanical event (eg. user click) and something meaningful for the application (create comment).</li>
+            <li>fire and forget.</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+var CommentActions = {
+  create: function(text) {
+    AppDispatcher.dispatch({
+      actionType: 'comment-create',
+      text:       text
+    });
+  },
+};
+
+// somewhere, when the user click on a button
+CommentActions.create('react is awesome');
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+var CommentActions = {
+
+  create: function(text) {
+    // allows to implement a loading state for example
+    dispatch('comment-create', text);
+
+    CommentsApi.create(text)
+      .then(comment => dispatch('comment-create-success', comment))
+      .catch(error => dispatch('comment-create-failue', error))
+  }
+
+};
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Actions</h2>
+          <ul>
+            <li>simple objects carrying a payload.</li>
+            <li>identified by a type property.</li>
+            <li>each stores receives all actions.</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+{
+  actionType: 'comment-create',
+  text:       text
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Store</h2>
+          <ul>
+            <li>manage application state and logic</li>
+            <li>single source of truth</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+// comment-store.js
+let _comments = [];
+const CommentStore = assign({}, EventEmitter.prototype, {
+  getAll: function() {
+    return _comments;
+  }
+});
+CommentStore.dispatchToken = AppDispatcher.register(action => {
+  switch(action.actionType) {
+    case 'comment-load-success':
+      _comments = action.comments;
+      CommentStore.emit('change');
+      break;
+  }
+});
+// in views
+CommentStore.on('change', this.handleCommentsChange);
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+  switch(action.actionType) {}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>-&gt; switch &lt;-</h2>
+          <p class="fragment">Screw this, I'm going back to jQuery</p>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+let handlers = {
+  'comment-load-success': handleNewComments,
+  'comment-create-success': handleCreateComment,
+};
+
+CommentStore.dispatchToken = AppDispatcher.register(action => {
+  if (handlers[action.actionType]) {
+    handlers[action.actionType](action);
+  }
+});
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>'comment-load-success' ?!</h2>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+const CommentConstants = {
+  COMMENT_LOAD_SUCCESS: 'comment-load-success'
+};
+
+// later...
+
+if (action.actionType === CommentConstants.COMMENT_LOAD_SUCCESS) {
+  // ...
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Views &amp; Controller Views</h2>
+        </section>
+
+        <section>
+          <h2>Views</h2>
+          <ul>
+            <li>Have no dependencies on the rest of the app (e.g. Flux actions or stores).</li>
+            <li>Receive data and callbacks exclusively via props.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Controller Views</h2>
+          <ul>
+            <li>Hold state from Flux stores and pass it as props to dumb components.</li>
+            <li>Call Flux actions and provide these as callbacks to dumb components.</li>
+            <li>Wrap other controller views or components</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Requirements:</h2>
+          <ul>
+            <li>add latest comments to the dashboard.</li>
+            <li>add latest comments to the news page.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>First approach</h2>
+          <h3>Load comments on each page and pass them down to children as props</h3>
+        </section>
+
+        <section>
+          <h2>Problems?</h2>
+          <ul class="fragment">
+            <li>duplication</li>
+            <li>coupling</li>
+            <li>does not scale</li>
+          </ul>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+class LatestComments extends React.Component {
+  constructor() {
+    super();
+    this.state = { comments: [] };
+  }
+  componentDidMount() {
+    Ajax.get('/comments').then(response => {
+      this.setState({ comments: response.comments })
+    });
+  }
+  render() {
+    return <ul>{this.state.comments.map(renderComment)}</ul>;
+  }
+  renderComment({body, author}) {
+    return <li>{body}—{author}</li>;
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+class LatestComments extends React.Component {
+  constructor() {
+    super();
+    this.state = { comments: [] };
+  }
+  componentDidMount() {
+    Api.loadComments().then(comments => {
+      this.setState({ comments: comments })
+    });
+  }
+  render() {
+    return <ul>{this.state.comments.map(renderComment)}</ul>;
+  }
+  renderComment({body, author}) {
+    return <li>{body}—{author}</li>;
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+class LatestComments extends React.Component {
+  constructor() {
+    super();
+    this.state = { comments: [] };
+  }
+  componentDidMount() {
+    commentsStore.listen(() => {
+      this.setState({ comments: commentsStore.getLatestComments() });
+    });
+    CommentActions.loadComments();
+  }
+  render() {
+    return <ul>{this.state.comments.map(renderComment)}</ul>;
+  }
+  renderComment({body, author}) {
+    return <li>{body}—{author}</li>;
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+class LatestCommentsContainer extends React.Component {
+  constructor() {
+    super();
+    this.state = { comments: [] };
+  }
+  componentDidMount() {
+    commentsStore.listen(() => {
+      this.setState({ comments: commentsStore.getLatestComments() });
+    });
+    CommentActions.loadComments();
+  }
+  render() {
+    return &lt;CommentList comments={this.state.comments}/&gt;;
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <pre><code class="javascript" data-trim>
+class CommentList extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  render() { 
+    return <ul>{this.props.comments.map(renderComment)}</ul>;
+  }
+  renderComment({body, author}) {
+    return <li>{body}—{author}</li>;
+  }
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h2>Views <span class="fragment">(Components)</span></h2>
+          <ul class="faded">
+            <li>Have no dependencies on the rest of the app, e.g. Flux actions or stores.</li>
+            <li>Receive data and callbacks exclusively via props.</li>
+          </ul>
+          <p><em>Icon, Story, LatestComments, Page</em></p>
+        </section>
+
+        <section>
+          <h2>Controller Views <span class="fragment">(Containers)</span></h2>
+          <ul class="faded">
+            <li>Hold state from Flux stores and pass it as props to dumb components.</li>
+            <li>Call Flux actions and provide these as callbacks to dumb components.</li>
+            <li>Wrap other containers or components</li>
+          </ul>
+          <p><em>UserPage, LatestCommentsContainer, StoryContainer</em></p>
+        </section>
+
+        <section>
+          <h2>Benefits for components</h2>
+          <ul>
+            <li>Separation of concerns ( again :) )</li>
+            <li>Trivial testing of components</li>
+            <li>Reuse regardless of data source</li>
+            <li>Pure components can be composed</li>
+            <li>Components specify the data they require (PropTypes)</li>
+            <li>Components don't have to worry about a loading state</li>
+            <li>Performance</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Critics</h2>
+          <ul>
+            <li class="fragment">switch</li>
+            <li class="fragment">Bloat: Dispatcher, Action creators &amp; Actions</li>
+            <li class="fragment">Singletons (problem mainly for isomorphic apps)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Implementations</h2>
+          <ul class="fragment">
+            <li>flux</li>
+            <li>alt</li>
+            <li>reflux</li>
+            <li>fluxible</li>
+            <li>fluxxor</li>
+            <li>marty.js</li>
+            <li>fynx</li>
+            <li>McFly</li>
+            <li>Delorean.js</li>
+            <li>fluxify</li>
+            <li>material-flux</li>
+            <li>...</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Recommendations?</h2>
+        </section>
+
+        <section>
+          <img src="snow1.jpg" class="clean"/>
+        </section>
+
+        <section>
+          <img src="snow2.jpg" class="clean"/>
+        </section>
+
+        <section>
+          <h2>Diversity is good</h2>
+          <ul>
+            <li>Model-View-Controller</li>
+            <li>Model–View–Adapter</li>
+            <li>Model–View–Presenter</li>
+            <li>Model-View-ViewModel</li>
+            <li>Web Model-View-Controller</li>
+            <li>Hierarchical Model–View–Controller</li>
+            <li>Presentation–Abstraction–Control</li>
+            <li>...</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3><a href="https://github.com/goatslacker/alt">https://github.com/goatslacker/alt</a></h3>
+          <br/>
+          <h3><a href="https://github.com/gaearon/redux">https://github.com/gaearon/redux</a></h3>
+        </section>
+
+        <section>
+          <h1>.</h1>
+          <h2>?</h2>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+
+    <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: false,
+        progress: true,
+        history: true,
+        center: true,
+
+        transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+        // Optional reveal.js plugins
+        dependencies: [
+          { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>
